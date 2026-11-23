@@ -81,7 +81,7 @@ nav.tabs a.on{color:#F2A93B}
 <input type="file" id="csvfile" accept=".csv,text/csv,text/plain" hidden>
 <script>
 'use strict';
-const APPV = '0.1.5';
+const APPV = '0.1.6';
 /* ---------- helpers ---------- */
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -369,7 +369,7 @@ function bottleSheet(id) {
   sheet(`<h2>${id ? 'Edit bottle' : 'New bottle'}</h2>
   <form id="bf" class="card" style="background:transparent;border:0;padding:0">
   <label>Name<input name="name" required value="${esc(b.name)}"></label>
-  <div class="grid2"><label>Size (cl)<input name="sizeCl" type="number" inputmode="decimal" required value="${b.sizeCl}"></label><label>Price per bottle (CHF)<input name="price" type="number" step="0.05" inputmode="decimal" value="${b.price}"></label></div>
+  <div class="grid2"><label>Bottle size in cl (70, 75 or 100)<input name="sizeCl" type="number" inputmode="decimal" required value="${b.sizeCl}"></label><label>Price per bottle (CHF)<input name="price" type="number" step="0.05" inputmode="decimal" value="${b.price}"></label></div>
   <div class="grid2"><label>Par (bottles)<input name="par" type="number" inputmode="decimal" value="${b.par}"></label><label>Area<select name="area">${S.areas.map((a) => `<option ${a === b.area ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></label></div>
   <label>Supplier<input name="supplier" value="${esc(b.supplier || '')}" list="sup"><datalist id="sup">${[...new Set(S.bottles.map((x) => x.supplier).filter(Boolean))].map((s) => `<option value="${esc(s)}">`).join('')}</datalist></label>
   <label>Supplier email (for orders)<input name="email" type="email" inputmode="email" value="${esc((S.suppliers || {})[b.supplier] || '')}"></label>
@@ -386,6 +386,7 @@ function recipeSheet(id) {
   ui.editR = r;
   drawRecipe();
 }
+function lineText(it, b) { return `${it.cl} cl from a ${b.sizeCl} cl bottle at ${chf(b.price)} = ${chf(it.cl / b.sizeCl * b.price)}${b.sizeCl < 20 ? ' · check the bottle size (Drinks › Bottles)' : ''}`; }
 function costHtml(r) {
   const c = recipeCost(r), pc = r.price ? c / r.price : 0, t = S.target / 100, fair = c ? Math.ceil(c / t) : 0;
   return `<div class="between"><span>Cost per drink</span><b>${chf(c)}</b></div>
@@ -395,7 +396,7 @@ function costHtml(r) {
 }
 function updateCost() {
   const box = $('#costBox'); if (box) box.innerHTML = costHtml(ui.editR);
-  document.querySelectorAll('#layer [data-line]').forEach((p) => { const it = ui.editR.items[+p.dataset.line]; const b = it && bottle(it.bottleId); p.textContent = b ? chf(it.cl / b.sizeCl * b.price) : ''; });
+  document.querySelectorAll('#layer [data-line]').forEach((p) => { const it = ui.editR.items[+p.dataset.line]; const b = it && bottle(it.bottleId); p.textContent = b ? lineText(it, b) : ''; });
 }
 function drawRecipe() {
   const r = ui.editR;
@@ -403,10 +404,10 @@ function drawRecipe() {
   <label>Name<input data-r="name" value="${esc(r.name)}"></label>
   <label>Menu price (CHF)<input data-r="price" type="number" step="0.5" inputmode="decimal" value="${r.price}"></label>
   <h3>Recipe</h3>
-  ${r.items.map((it, i) => { const b = bottle(it.bottleId); return `<div class="row"><select data-ri="${i}" data-k="bottleId" style="flex:2;${it.bottleId ? '' : 'border-color:#F2A93B'}">${it.bottleId ? '' : '<option value="" selected disabled>Choose a bottle…</option>'}${S.bottles.map((x) => `<option value="${x.id}" ${x.id === it.bottleId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}<option value="__new">+ New bottle…</option></select><input data-ri="${i}" data-k="cl" type="number" step="0.5" inputmode="decimal" value="${it.cl}" style="flex:1" aria-label="cl"><span class="small">cl</span><button class="btn sm ghost" data-a="rmItem" data-v="${i}" aria-label="Remove">✕</button></div><p class="small" data-line="${i}">${b ? chf(it.cl / b.sizeCl * b.price) : ''}</p>`; }).join('')}
+  ${r.items.map((it, i) => { const b = bottle(it.bottleId); return `<div class="row"><select data-ri="${i}" data-k="bottleId" style="flex:2;${it.bottleId ? '' : 'border-color:#F2A93B'}">${it.bottleId ? '' : '<option value="" selected disabled>Choose a bottle…</option>'}${S.bottles.map((x) => `<option value="${x.id}" ${x.id === it.bottleId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}<option value="__new">+ New bottle…</option></select><input data-ri="${i}" data-k="cl" type="number" step="0.5" inputmode="decimal" value="${it.cl}" style="flex:1" aria-label="cl"><span class="small">cl</span><button class="btn sm ghost" data-a="rmItem" data-v="${i}" aria-label="Remove">✕</button></div><p class="small" data-line="${i}">${b ? lineText(it, b) : ''}</p>`; }).join('')}
   ${ui.newFor != null ? `<div class="card hi"><h3>New bottle</h3>
     <label>Name<input id="nbName" placeholder="e.g. Campari"></label>
-    <div class="grid2"><label>Size (cl)<input id="nbSize" type="number" inputmode="decimal" value="70"></label><label>Price per bottle (CHF)<input id="nbPrice" type="number" step="0.05" inputmode="decimal" placeholder="0.00"></label></div>
+    <div class="grid2"><label>Bottle size in cl (70, 75 or 100)<input id="nbSize" type="number" inputmode="decimal" value="70"></label><label>Price per bottle (CHF)<input id="nbPrice" type="number" step="0.05" inputmode="decimal" placeholder="0.00"></label></div>
     <div class="grid2"><button class="btn primary" data-a="nbSave">Add bottle</button><button class="btn ghost" data-a="nbCancel">Cancel</button></div></div>` : ''}
   <button class="btn" data-a="addItem">+ Add ingredient</button>
   <label>Garnish, syrup, other (CHF per drink)<input data-r="extra" type="number" step="0.05" inputmode="decimal" value="${r.extra || 0}"></label>
