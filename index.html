@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pegel</title>
+<meta name="description" content="Pegel: stock control for bars. Count, cost cards, variance and orders.">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Pegel">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#000;color:#fff;font-family:Geist,system-ui,sans-serif;-webkit-text-size-adjust:100%}
+body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font-family:inherit;font-size:16px;color:#fff}
+a{color:#F2A93B}
+.wrap{max-width:560px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) 16px 32px;display:flex;flex-direction:column;gap:16px}
+h1{margin:0;font-size:24px;line-height:32px;font-weight:600}
+h2{margin:0;font-size:18px;line-height:28px;font-weight:600}
+h3{margin:0;font-size:16px;line-height:24px;font-weight:600}
+p{margin:0}
+.muted{color:#A3A3A3;font-size:14px;line-height:20px}
+.small{font-size:12px;line-height:16px;color:#A3A3A3}
+.card{background:#181818;border:1px solid #313131;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card.hi{border-color:#F2A93B}
+.card.flag{border:1px dashed #7CC4FF}
+.row{display:flex;align-items:center;gap:12px}
+.between{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stat{font-size:20px;line-height:28px;font-weight:600}
+.btn{min-height:44px;padding:8px 16px;border-radius:12px;border:1px solid #313131;background:#272727;font-weight:600;font-size:16px;cursor:pointer;transition:transform 200ms cubic-bezier(0.22,1,0.36,1),background-color 300ms cubic-bezier(0.22,1,0.36,1);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(0.98)}
+.btn.primary{background:#F2A93B;border-color:#F2A93B;color:#000}
+.btn.ghost{background:transparent}
+.btn.sm{min-height:36px;padding:4px 12px;font-size:14px;border-radius:10px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #F2A93B;outline-offset:2px}
+input,select,textarea{background:#000;border:1px solid #313131;border-radius:12px;min-height:44px;padding:8px 12px;width:100%}
+textarea{min-height:96px;resize:vertical}
+label{font-size:12px;line-height:16px;color:#A3A3A3;display:flex;flex-direction:column;gap:4px}
+input[type=range]{padding:0;border:0;accent-color:#F2A93B;min-height:32px;background:transparent}
+.seg{display:flex;background:#181818;border:1px solid #313131;border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;min-height:40px;border:0;border-radius:8px;background:transparent;font-weight:600;font-size:14px;cursor:pointer;color:#A3A3A3}
+.seg button.on{background:#313131;color:#fff}
+.list{background:#181818;border:1px solid #313131;border-radius:16px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #272727;width:100%;background:transparent;border-left:0;border-right:0;border-top:0;text-align:left;cursor:pointer}
+.li:last-child{border-bottom:0}
+.grow{flex:1;min-width:0}
+.tag{padding:2px 8px;border-radius:9999px;font-size:12px;line-height:16px;font-weight:600;color:#000;white-space:nowrap}
+.ok{background:#4ADE80}.bad{background:#FF8A7A}.warn{background:#F2A93B}.info{background:#7CC4FF}
+.red{color:#FF8A7A}.green{color:#4ADE80}.amber{color:#F2A93B}.blue{color:#7CC4FF}
+.bar{height:6px;border-radius:9999px;background:#272727;overflow:hidden}.bar>span{display:block;height:6px;background:#FF8A7A}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:44px;height:44px;border-radius:12px;border:1px solid #313131;background:#272727;font-size:20px;cursor:pointer}
+.stepper span{min-width:32px;text-align:center;font-weight:600}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#181818;border-top:1px solid #272727;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 8px calc(16px + env(safe-area-inset-bottom));z-index:5}
+nav.tabs a{display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;color:#A3A3A3;font-size:12px;line-height:16px;font-weight:500;padding:4px 0}
+nav.tabs a.on{color:#F2A93B}
+.toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);background:#272727;border:1px solid #313131;padding:8px 16px;border-radius:12px;font-size:14px;z-index:20;max-width:90vw}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;z-index:30}
+.sheet>div{background:#181818;border:1px solid #313131;border-radius:24px 24px 0 0;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:24px 16px 40px;display:flex;flex-direction:column;gap:16px}
+.answer{white-space:pre-wrap;font-size:16px;line-height:24px}
+.skel{height:16px;border-radius:8px;background:#272727;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion: reduce){.btn{transition:none}.skel{animation:none}}
+</style>
+</head>
+<body>
+<main id="app" class="wrap" aria-live="polite"><div class="skel"></div><div class="skel"></div></main>
+<nav class="tabs" id="tabs" aria-label="App"></nav>
+<div id="layer"></div>
+<input type="file" id="restorefile" accept=".json,application/json" hidden>
+<input type="file" id="csvfile" accept=".csv,text/csv,text/plain" hidden>
+<script>
+'use strict';
+const APPV = '0.1';
+/* ---------- helpers ---------- */
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const chf = (n) => 'CHF ' + (Math.round(n * 100) / 100).toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const r1 = (n) => Math.round(n * 10) / 10;
+const DAY = 86400000;
+const fmtDate = (t) => new Date(t).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const fmtTime = (t) => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const clone = (o) => JSON.parse(JSON.stringify(o));
+function toast(msg) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+
+/* ---------- sample data ---------- */
+function seed() {
+  const now = Date.now();
+  const B = (name, sizeCl, price, par, area, supplier) => ({ id: uid(), name, sizeCl, price, par, area, supplier });
+  const S1 = 'Spirituosen Depot Zürich', S2 = 'Weinhandel am Limmat', S3 = 'Getränke Express';
+  const bottles = [
+    B('Tanqueray Gin', 70, 29.8, 4, 'Back bar', S1), B("Hendrick's Gin", 70, 38.9, 4, 'Back bar', S1),
+    B('Campari', 100, 24.5, 3, 'Back bar', S1), B('Aperol', 100, 18.9, 6, 'Back bar', S1),
+    B('Martini Rosso', 100, 14.9, 2, 'Back bar', S1), B('Cointreau', 70, 34, 2, 'Back bar', S1),
+    B('Tequila Blanco', 70, 42, 3, 'Back bar', S1), B('Vodka', 70, 32, 3, 'Back bar', S1),
+    B('Coffee liqueur', 70, 28, 2, 'Back bar', S1),
+    B('Prosecco Valdobbiadene', 75, 13.85, 18, 'Wine fridge', S2), B('Chasselas Lavaux 2023', 75, 21.4, 4, 'Wine fridge', S2),
+    B('Pinot Noir Fläsch 2021', 75, 26.5, 6, 'Wine fridge', S2), B('Fever Tree Tonic 20 cl', 20, 1.4, 72, 'Storage', S3)
+  ];
+  const by = (n) => bottles.find((b) => b.name.startsWith(n)).id;
+  const R = (name, price, items, extra) => ({ id: uid(), name, price, items: items.map(([n, cl]) => ({ bottleId: by(n), cl })), extra });
+  const recipes = [
+    R('Negroni', 19, [['Tanqueray', 3], ['Campari', 3], ['Martini', 3]], 0.2),
+    R('Margarita', 20, [['Tequila', 5], ['Cointreau', 2]], 0.35),
+    R('Aperol Spritz', 16, [['Aperol', 6], ['Prosecco', 9]], 0.3),
+    R("Hendrick's Tonic", 21, [["Hendrick's", 4], ['Fever', 20]], 0.15),
+    R('Espresso Martini', 22, [['Vodka', 4], ['Coffee', 2]], 0.45),
+    R('Prosecco glass', 9, [['Prosecco', 10]], 0),
+    R('Chasselas glass', 10, [['Chasselas', 10]], 0)
+  ];
+  const tA = now - 8 * DAY, tB = now - 1 * DAY;
+  const A = { Tanqueray: 4.3, "Hendrick's": 3.6, Campari: 3.2, Aperol: 7.5, Martini: 2.8, Cointreau: 2.4, Tequila: 4.1, Vodka: 3.7, Coffee: 1.9, Prosecco: 24, Chasselas: 5, Pinot: 14, Fever: 96 };
+  const del = { Aperol: 6, Prosecco: 12, Fever: 48, Tequila: 2 };
+  const extra = { Campari: 0.6, Tanqueray: 0.5, Tequila: 0.6, Aperol: 0.4, Prosecco: 1.5, "Hendrick's": 0.2, Vodka: 0.1, Martini: 0.2 };
+  const sold = { Negroni: 64, Margarita: 41, 'Aperol Spritz': 88, "Hendrick's Tonic": 52, 'Espresso Martini': 37, 'Prosecco glass': 30, 'Chasselas glass': 18 };
+  const lvA = {}, lvB = {};
+  for (const [k, v] of Object.entries(A)) {
+    const b = bottles.find((x) => x.name.startsWith(k));
+    let used = 0;
+    for (const r of recipes) for (const it of r.items) if (it.bottleId === b.id) used += (sold[r.name] || 0) * it.cl / b.sizeCl;
+    const end = Math.max(0, r1(v + (del[k] || 0) - used - (extra[k] || 0)));
+    lvA[b.id] = v; lvB[b.id] = end;
+  }
+  return {
+    v: 1, barName: 'Bar Albis (sample)', target: 20, sample: true,
+    areas: ['Back bar', 'Wine fridge', 'Storage'],
+    bottles, recipes,
+    counts: [{ id: uid(), date: tA, levels: lvA }, { id: uid(), date: tB, levels: lvB }],
+    deliveries: [{ id: uid(), date: now - 5 * DAY, note: 'Sample delivery', lines: Object.entries(del).map(([k, q]) => ({ bottleId: by(k), qty: q })) }],
+    sales: [{ id: uid(), date: now - 2 * DAY, source: 'Sample week', lines: Object.entries(sold).map(([n, q]) => ({ recipeId: recipes.find((r) => r.name === n).id, qty: q })) }],
+    draft: null
+  };
+}
+function emptyState() { return { v: 1, barName: 'My bar', target: 20, sample: false, areas: ['Back bar', 'Speed rail', 'Wine fridge', 'Storage'], bottles: [], recipes: [], counts: [], deliveries: [], sales: [], draft: null }; }
+
+/* ---------- storage: account (db) with phone fallback ---------- */
+let S = null;
+const LS = 'pegel-state-v1';
+function lsGet() { try { const t = localStorage.getItem(LS); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+function save() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { toast('Phone storage is full. Download a backup in Setup.'); } }
+function commit() { S._t = Date.now(); save(); render(); }
+
+/* ---------- maths ---------- */
+const bottle = (id) => S.bottles.find((b) => b.id === id);
+const recipe = (id) => S.recipes.find((r) => r.id === id);
+const counts = () => S.counts.slice().sort((a, b) => a.date - b.date);
+const lvl = (count, id) => (count && count.levels[id] != null ? count.levels[id] : 0);
+function recipeCost(r) { let c = r.extra || 0; for (const it of r.items) { const b = bottle(it.bottleId); if (b) c += it.cl / b.sizeCl * b.price; } return c; }
+function deliveredBetween(id, t0, t1) { let q = 0; for (const d of S.deliveries) if (d.date > t0 && d.date <= t1) for (const l of d.lines) if (l.bottleId === id) q += +l.qty || 0; return q; }
+function expectedBetween(id, t0, t1) {
+  let bottles = 0; const b = bottle(id); if (!b) return 0;
+  for (const s of S.sales) if (s.date > t0 && s.date <= t1) for (const l of s.lines) { const r = recipe(l.recipeId); if (!r) continue; for (const it of r.items) if (it.bottleId === id) bottles += (+l.qty || 0) * it.cl / b.sizeCl; }
+  return bottles;
+}
+function variance() {
+  const c = counts(); if (c.length < 2) return null;
+  const a = c[c.length - 2], z = c[c.length - 1];
+  const rows = S.bottles.map((b) => {
+    const start = lvl(a, b.id), end = lvl(z, b.id), del = deliveredBetween(b.id, a.date, z.date);
+    const used = start + del - end, exp = expectedBetween(b.id, a.date, z.date), diff = used - exp;
+    return { b, start, end, del, used, exp, diff, chf: diff * b.price };
+  });
+  const byCocktail = S.recipes.map((r) => {
+    let v = 0, sold = 0;
+    for (const s of S.sales) if (s.date > a.date && s.date <= z.date) for (const l of s.lines) if (l.recipeId === r.id) sold += +l.qty || 0;
+    for (const it of r.items) {
+      const row = rows.find((x) => x.b.id === it.bottleId); if (!row || row.exp <= 0 || row.diff <= 0) continue;
+      const share = sold * it.cl / row.b.sizeCl / row.exp;
+      v += row.chf * share;
+    }
+    return { r, sold, chf: v };
+  });
+  const usedChf = rows.reduce((s, x) => s + Math.max(0, x.used) * x.b.price, 0);
+  const expChf = rows.reduce((s, x) => s + x.exp * x.b.price, 0);
+  return { a, z, rows, byCocktail, usedChf, expChf, gap: usedChf - expChf };
+}
+function stockNow(id) {
+  const c = counts(), z = c[c.length - 1]; if (!z) return null;
+  return Math.max(0, lvl(z, id) + deliveredBetween(id, z.date, Infinity) - expectedBetween(id, z.date, Infinity));
+}
+function stockValue() { const c = counts(), z = c[c.length - 1]; if (!z) return 0; return S.bottles.reduce((s, b) => s + lvl(z, b.id) * b.price, 0); }
+function suggestions() {
+  const out = {};
+  for (const b of S.bottles) {
+    const now = stockNow(b.id); if (now == null || !b.par) continue;
+    const need = Math.ceil(b.par - now); if (need <= 0) continue;
+    const k = b.supplier || 'No supplier set';
+    (out[k] = out[k] || []).push({ b, now, need });
+  }
+  return out;
+}
+
+/* ---------- UI state ---------- */
+const ui = { view: 'home', mode: 'bottle', area: null, flags: {}, unknown: [], busy: false, recipeId: null, drinksTab: 'cocktails', bottleId: null, reportsTab: 'variance' };
+const VIEWS = ['home', 'count', 'drinks', 'reports', 'orders', 'setup'];
+function go(v) { ui.view = v; try { history.replaceState(null, '', '#' + v); } catch (e) {} render(); window.scrollTo(0, 0); }
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (VIEWS.includes(h) && h !== ui.view) { ui.view = h; render(); } });
+
+const ICON = {
+  home: 'M3 11l9-7 9 7v9H3z', count: 'M4 8h3l2-3h6l2 3h3v11H4z M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  drinks: 'M5 4h14l-7 8z M12 12v8 M8 20h8', reports: 'M4 19V5 M4 19h16 M8 15l4-4 3 3 5-6', orders: 'M5 6h15l-2 9H7z M5 6L4 3H2'
+};
+function tabs() {
+  $('#tabs').innerHTML = ['home', 'count', 'drinks', 'reports', 'orders'].map((t) =>
+    `<a href="#${t}" data-a="go" data-v="${t}" class="${ui.view === t ? 'on' : ''}" ${ui.view === t ? 'aria-current="page"' : ''}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICON[t]}"/></svg>${t[0].toUpperCase() + t.slice(1)}</a>`).join('');
+}
+function render() {
+  if (!S) return;
+  tabs();
+  const v = { home: vHome, count: vCount, drinks: vDrinks, reports: vReports, orders: vOrders, setup: vSetup }[ui.view] || vHome;
+  $('#app').innerHTML = v();
+}
+
+/* ---------- views ---------- */
+function vHome() {
+  const c = counts(), last = c[c.length - 1], V = variance();
+  const low = S.bottles.filter((b) => { const n = stockNow(b.id); return n != null && b.par && n < b.par; });
+  const worst = V ? V.rows.filter((x) => x.chf > 1).sort((a, b) => b.chf - a.chf)[0] : null;
+  return `
+  <div class="between"><div><div class="muted">${esc(S.barName)}</div><h1>Pegel</h1></div>
+  <button class="btn sm" data-a="go" data-v="setup">Setup</button></div>
+  ${S.sample ? `<div class="card flag"><p class="muted"><span class="blue" style="font-weight:600">Sample data.</span> Everything works with a made up bar so you can try it. Go to Setup to start with your own bottles.</p></div>` : ''}
+  <div class="card hi">
+    <div><div class="small amber" style="font-weight:600">${S.draft ? 'COUNT IN PROGRESS' : 'NEXT COUNT'}</div>
+    <h2>${S.draft ? 'Started ' + fmtTime(S.draft.startedAt) : (last ? 'Last count ' + fmtDate(last.date) : 'No count yet')}</h2>
+    <p class="muted">${S.bottles.length} bottles in ${S.areas.length} areas</p></div>
+    <button class="btn primary block" data-a="go" data-v="count">${S.draft ? 'Continue count' : 'Start count'}</button>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="small">Stock value at last count</div><div class="stat">${chf(stockValue())}</div></div>
+    <button class="card" data-a="go" data-v="reports" style="text-align:left;cursor:pointer"><div class="small">Unaccounted since count before</div><div class="stat ${V && V.gap > 0 ? 'red' : ''}">${V ? chf(V.gap) : 'Need 2 counts'}</div></button>
+  </div>
+  <div class="grid2">
+    <button class="btn" data-a="delivery">Add delivery</button>
+    <button class="btn" data-a="sales">Add sales</button>
+  </div>
+  <h3>Needs your attention</h3>
+  <div class="list">
+    ${worst ? `<button class="li" data-a="go" data-v="reports"><span class="tag bad">${chf(worst.chf)}</span><span class="grow">${esc(worst.b.name)}: ${r1(worst.diff)} bottles more used than sold</span></button>` : ''}
+    ${low.slice(0, 4).map((b) => `<button class="li" data-a="go" data-v="orders"><span class="tag warn">Low</span><span class="grow">${esc(b.name)}: about ${r1(stockNow(b.id))} left, par ${b.par}</span></button>`).join('')}
+    ${!worst && !low.length ? `<div class="li"><span class="muted">Nothing urgent. Count after service to keep numbers fresh.</span></div>` : ''}
+  </div>
+  <p class="small">Saved on this phone. ${S.lastBackup ? 'Last backup ' + fmtDate(S.lastBackup) + '.' : 'Make a backup in Setup now and then.'}</p>`;
+}
+
+function vCount() {
+  if (!S.draft) {
+    return `<h1>Count</h1><p class="muted">Go area by area. For each bottle set the full bottles and how full the open one is, then finish.</p>
+    <button class="btn primary block" data-a="startCount">Start a new count</button>
+    ${counts().length ? `<p class="small">Last count: ${fmtDate(counts().slice(-1)[0].date)} ${fmtTime(counts().slice(-1)[0].date)}</p>` : ''}`;
+  }
+  const area = ui.area;
+  if (!area) {
+    return `<div class="between"><h1>Count</h1><button class="btn sm ghost" data-a="cancelCount">Cancel</button></div>
+    <p class="muted">Started ${fmtTime(S.draft.startedAt)}. Pick an area.</p>
+    <div class="list">${S.areas.map((a) => { const bs = S.bottles.filter((b) => b.area === a); const done = bs.filter((b) => S.draft.levels[b.id] != null).length; return `<button class="li" data-a="area" data-v="${esc(a)}"><span class="grow"><span style="display:block;font-weight:500">${esc(a)}</span><span class="small">${bs.length} bottles</span></span><span class="tag ${done === bs.length && bs.length ? 'ok' : 'warn'}">${done}/${bs.length}</span></button>`; }).join('')}</div>
+    <button class="btn primary block" data-a="finishCount">Finish count</button>
+    <p class="small">Bottles you did not touch keep their level from the last count. Finish once every area is done.</p>`;
+  }
+  const bs = S.bottles.filter((b) => b.area === area);
+  const prev = counts().slice(-1)[0];
+  return `<div class="between"><button class="btn sm ghost" data-a="area" data-v="">Back</button><h1 style="font-size:20px">${esc(area)}</h1><span></span></div>
+  <p class="small">Photo counting with AI comes in the next version. For now tap + and − and slide the open bottle level.</p>
+  ${bs.map((b) => {
+    const has = S.draft.levels[b.id] != null; const v = has ? S.draft.levels[b.id] : lvl(prev, b.id);
+    const full = Math.floor(v + 1e-9), t = Math.round((v - full) * 10);
+    return `<div class="card ${ui.flags[b.id] ? 'flag' : ''}">
+      <div class="between"><h3>${esc(b.name)}</h3><span class="tag ${has ? (ui.flags[b.id] ? 'info' : 'ok') : 'warn'}">${has ? (ui.flags[b.id] ? 'Check' : 'Counted') : 'Not yet'}</span></div>
+      ${ui.flags[b.id] ? `<p class="small blue">${esc(ui.flags[b.id])}</p>` : ''}
+      <div class="between"><span class="muted">Full bottles</span><div class="stepper"><button data-a="full" data-id="${b.id}" data-d="-1" aria-label="One less full ${esc(b.name)}">−</button><span>${full}</span><button data-a="full" data-id="${b.id}" data-d="1" aria-label="One more full ${esc(b.name)}">+</button></div></div>
+      <label>Open bottle: <b style="color:#fff">${t}/10</b><input type="range" min="0" max="9" step="1" value="${t}" data-f="tenths" data-id="${b.id}"></label>
+    </div>`;
+  }).join('')}
+  ${bs.length ? '' : '<p class="muted">No bottles in this area yet. Add them in Drinks › Bottles.</p>'}
+  <button class="btn block" data-a="area" data-v="">Done with ${esc(area)}</button>`;
+}
+
+function vDrinks() {
+  const seg = `<div class="seg"><button class="${ui.drinksTab === 'cocktails' ? 'on' : ''}" data-a="dtab" data-v="cocktails">Cocktails</button><button class="${ui.drinksTab === 'bottles' ? 'on' : ''}" data-a="dtab" data-v="bottles">Bottles</button></div>`;
+  if (ui.drinksTab === 'bottles') {
+    return `<h1>Drinks</h1>${seg}
+    <button class="btn primary block" data-a="editBottle" data-id="">Add a bottle</button>
+    <div class="list">${S.bottles.map((b) => { const n = stockNow(b.id); return `<button class="li" data-a="editBottle" data-id="${b.id}"><span class="grow"><span style="display:block;font-weight:500">${esc(b.name)}</span><span class="small">${esc(b.area)} · ${b.sizeCl} cl · ${chf(b.price)} · par ${b.par}</span></span><span class="tag ${n != null && n < b.par ? 'warn' : 'ok'}">${n == null ? '–' : r1(n)}</span></button>`; }).join('') || '<div class="li muted">No bottles yet.</div>'}</div>`;
+  }
+  const t = S.target / 100;
+  return `<h1>Drinks</h1>${seg}
+  <button class="btn primary block" data-a="editRecipe" data-id="">Add cocktail</button>
+  <p class="small">Target pour cost ${S.target}%. Tap a drink for its cost card.</p>
+  <div class="list">${S.recipes.map((r) => { const c = recipeCost(r), pc = c / r.price; return `<button class="li" data-a="editRecipe" data-id="${r.id}"><span class="grow"><span style="display:block;font-weight:500">${esc(r.name)}</span><span class="small">Cost ${chf(c)} · sells at ${chf(r.price)} · profit ${chf(r.price / 1.081 - c)}</span></span><span class="tag ${pc > t ? 'bad' : 'ok'}">${(pc * 100).toFixed(1)}%</span></button>`; }).join('') || '<div class="li muted">No cocktails yet.</div>'}</div>`;
+}
+
+function vReports() {
+  const seg = `<div class="seg"><button class="${ui.reportsTab === 'variance' ? 'on' : ''}" data-a="rtab" data-v="variance">Variance</button><button class="${ui.reportsTab === 'history' ? 'on' : ''}" data-a="rtab" data-v="history">Sales and deliveries</button></div>`;
+  if (ui.reportsTab === 'history') {
+    const ev = [...S.sales.map((s) => ({ t: s.date, k: 'Sales', d: s.source || 'Entered by hand', n: s.lines.reduce((a, l) => a + (+l.qty || 0), 0) + ' drinks', id: s.id, type: 'sale' })),
+      ...S.deliveries.map((d) => ({ t: d.date, k: 'Delivery', d: d.note || '', n: d.lines.reduce((a, l) => a + (+l.qty || 0), 0) + ' bottles', id: d.id, type: 'del' })),
+      ...S.counts.map((c) => ({ t: c.date, k: 'Count', d: Object.keys(c.levels).length + ' bottles', n: '', id: c.id, type: 'count' }))].sort((a, b) => b.t - a.t);
+    return `<h1>Reports</h1>${seg}<div class="grid2"><button class="btn" data-a="sales">Add sales</button><button class="btn" data-a="delivery">Add delivery</button></div>
+    <div class="list">${ev.map((e) => `<div class="li"><span class="tag ${e.k === 'Count' ? 'ok' : e.k === 'Sales' ? 'info' : 'warn'}">${e.k}</span><span class="grow"><span style="display:block">${fmtDate(e.t)} ${fmtTime(e.t)}</span><span class="small">${esc(e.d)} ${e.n ? '· ' + e.n : ''}</span></span><button class="btn sm ghost" data-a="delEvent" data-type="${e.type}" data-id="${e.id}" aria-label="Delete">✕</button></div>`).join('')}</div>`;
+  }
+  const V = variance();
+  if (!V) return `<h1>Reports</h1>${seg}<div class="card"><p class="muted">You need two finished counts. The report compares what was used between them with what Lightspeed sold.</p></div>`;
+  const modes = `<div class="seg"><button class="${ui.mode === 'bottle' ? 'on' : ''}" data-a="mode" data-v="bottle">By bottle</button><button class="${ui.mode === 'cocktail' ? 'on' : ''}" data-a="mode" data-v="cocktail">By cocktail</button></div>`;
+  let rows;
+  if (ui.mode === 'bottle') {
+    const list = V.rows.filter((x) => Math.abs(x.diff) >= 0.05).sort((a, b) => b.chf - a.chf); const max = Math.max(1, ...list.map((x) => Math.abs(x.chf)));
+    rows = list.map((x) => `<div class="li" style="flex-direction:column;align-items:stretch;gap:8px;cursor:default"><div class="between"><span style="font-weight:500">${esc(x.b.name)}</span><span class="${x.chf > 0 ? 'red' : 'green'}" style="font-weight:600">${chf(x.chf)}</span></div><div class="bar"><span style="width:${Math.min(100, Math.abs(x.chf) / max * 100)}%;${x.chf < 0 ? 'background:#4ADE80' : ''}"></span></div><span class="small">Start ${r1(x.start)} + delivered ${r1(x.del)} − now ${r1(x.end)} = used ${r1(x.used)}. Sales say ${r1(x.exp)}. ${x.diff > 0 ? r1(x.diff) + ' bottles unaccounted.' : r1(-x.diff) + ' bottles more than expected left.'}</span></div>`).join('');
+  } else {
+    const list = V.byCocktail.filter((x) => x.sold).sort((a, b) => b.chf - a.chf); const max = Math.max(1, ...list.map((x) => x.chf));
+    rows = list.map((x) => `<div class="li" style="flex-direction:column;align-items:stretch;gap:8px;cursor:default"><div class="between"><span style="font-weight:500">${esc(x.r.name)}</span><span class="red" style="font-weight:600">${chf(x.chf)}</span></div><div class="bar"><span style="width:${x.chf / max * 100}%"></span></div><span class="small">${x.sold} sold. Share of the missing stock in its ingredients.</span></div>`).join('');
+  }
+  return `<h1>Reports</h1>${seg}
+  <div class="card"><p class="small">${fmtDate(V.a.date)} to ${fmtDate(V.z.date)}</p>
+  <div class="between"><span class="muted">Should have used (sales × recipes)</span><b>${chf(V.expChf)}</b></div>
+  <div class="between"><span class="muted">Actually used (counts)</span><b>${chf(V.usedChf)}</b></div>
+  <div class="between"><span>Unaccounted</span><span class="stat ${V.gap > 0 ? 'red' : 'green'}">${chf(V.gap)}</span></div>
+  <p class="small">${V.usedChf ? (V.gap / V.usedChf * 100).toFixed(1) : 0}% of usage.</p></div>
+  ${modes}<div class="list">${rows || '<div class="li muted">No differences.</div>'}</div>
+  <button class="btn block" data-a="export">Download report (CSV)</button>`;
+}
+
+function vOrders() {
+  const sg = suggestions(), keys = Object.keys(sg);
+  return `<h1>Orders</h1><p class="muted">Stock now = last count + deliveries − what has been sold since. Anything under par is suggested.</p>
+  ${keys.map((k) => { const tot = sg[k].reduce((s, x) => s + x.need * x.b.price, 0); return `<div class="card"><div class="between"><h3>${esc(k)}</h3><span class="small">${chf(tot)}</span></div>
+    ${sg[k].map((x) => `<div class="between"><span class="grow"><span style="display:block">${esc(x.b.name)}</span><span class="small">about ${r1(x.now)} left, par ${x.b.par}</span></span><b>${x.need}×</b></div>`).join('')}
+    <div class="row" style="flex-wrap:wrap"><button class="btn sm" data-a="copyOrder" data-v="${esc(k)}">Copy order text</button>${(S.suppliers || {})[k] ? `<a class="btn sm primary" href="${esc(mailto(k))}">Email order</a>` : '<span class="small">Add the supplier email on a bottle to send by email.</span>'}</div></div>`; }).join('') || '<div class="card"><p class="muted">Everything is at or above par.</p></div>'}
+  <p class="small">Email order opens your mail app with the order filled in. Check it, then send.</p>`;
+}
+
+function vSetup() {
+  return `<div class="between"><button class="btn sm ghost" data-a="go" data-v="home">Back</button><h1 style="font-size:20px">Setup</h1><span></span></div>
+  <div class="card"><label>Bar name<input data-f="barName" value="${esc(S.barName)}"></label>
+  <label>Target pour cost (%)<input type="number" inputmode="decimal" data-f="target" value="${S.target}"></label>
+  <label>Areas (one per line)<textarea data-f="areas">${esc(S.areas.join('\n'))}</textarea></label></div>
+  <div class="card"><h3>Your data</h3><p class="muted">Everything is saved on this phone only. Download a backup now and then, and use it to move to a new phone.</p>
+  <button class="btn primary" data-a="backup">Download backup</button>
+  <button class="btn" data-a="restore">Restore from backup</button>
+  <button class="btn" data-a="export">Download stock report (CSV for Excel)</button></div>
+  <div class="card"><h3>Start over</h3>
+  <button class="btn" data-a="reset" data-v="empty">Start empty with my own bar</button>
+  <button class="btn ghost" data-a="reset" data-v="sample">Load sample bar again</button></div>
+  <p class="small">Pegel test version ${APPV}. Works offline once opened.</p>`;
+}
+
+/* ---------- sheets ---------- */
+function sheet(html) { $('#layer').innerHTML = `<div class="sheet" data-a="closeSheet"><div role="dialog" aria-modal="true" data-stop>${html}</div></div>`; const f = $('#layer input, #layer select, #layer textarea, #layer button'); if (f) f.focus(); }
+function closeSheet() { $('#layer').innerHTML = ''; }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#layer').innerHTML) closeSheet(); });
+
+function bottleSheet(id) {
+  const b = id ? bottle(id) : { name: '', sizeCl: 70, price: 0, par: 2, area: S.areas[0], supplier: '' };
+  sheet(`<h2>${id ? 'Edit bottle' : 'New bottle'}</h2>
+  <form id="bf" class="card" style="background:transparent;border:0;padding:0">
+  <label>Name<input name="name" required value="${esc(b.name)}"></label>
+  <div class="grid2"><label>Size (cl)<input name="sizeCl" type="number" inputmode="decimal" required value="${b.sizeCl}"></label><label>Price per bottle (CHF)<input name="price" type="number" step="0.05" inputmode="decimal" value="${b.price}"></label></div>
+  <div class="grid2"><label>Par (bottles)<input name="par" type="number" inputmode="decimal" value="${b.par}"></label><label>Area<select name="area">${S.areas.map((a) => `<option ${a === b.area ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></label></div>
+  <label>Supplier<input name="supplier" value="${esc(b.supplier || '')}" list="sup"><datalist id="sup">${[...new Set(S.bottles.map((x) => x.supplier).filter(Boolean))].map((s) => `<option value="${esc(s)}">`).join('')}</datalist></label>
+  <label>Supplier email (for orders)<input name="email" type="email" inputmode="email" value="${esc((S.suppliers || {})[b.supplier] || '')}"></label>
+  <button class="btn primary" type="submit">Save</button>
+  ${id ? `<button class="btn ghost" type="button" data-a="delBottle" data-id="${id}">Delete bottle</button>` : ''}
+  <button class="btn ghost" type="button" data-a="closeSheet">Cancel</button></form>`);
+  $('#bf').onsubmit = (e) => { e.preventDefault(); const f = new FormData(e.target); const o = { name: f.get('name').trim(), sizeCl: +f.get('sizeCl') || 70, price: +f.get('price') || 0, par: +f.get('par') || 0, area: f.get('area'), supplier: f.get('supplier').trim() };
+    if (!o.name) return; const em = (f.get('email') || '').trim(); if (o.supplier && em) { S.suppliers = S.suppliers || {}; S.suppliers[o.supplier] = em; } if (id) Object.assign(bottle(id), o); else S.bottles.push({ id: uid(), ...o }); closeSheet(); commit(); toast('Bottle saved'); };
+}
+
+function recipeSheet(id) {
+  const r = id ? clone(recipe(id)) : { id: uid(), name: '', price: 0, items: [], extra: 0 };
+  ui.editR = r;
+  drawRecipe();
+}
+function drawRecipe() {
+  const r = ui.editR, c = recipeCost(r), pc = r.price ? c / r.price : 0, t = S.target / 100;
+  const fair = c ? Math.ceil(c / t) : 0;
+  sheet(`<h2>${r.name ? esc(r.name) : 'New cocktail'}</h2>
+  <label>Name<input data-r="name" value="${esc(r.name)}"></label>
+  <label>Menu price (CHF)<input data-r="price" type="number" step="0.5" inputmode="decimal" value="${r.price}"></label>
+  <h3>Recipe</h3>
+  ${r.items.map((it, i) => { const b = bottle(it.bottleId); return `<div class="row"><select data-ri="${i}" data-k="bottleId" style="flex:2">${S.bottles.map((x) => `<option value="${x.id}" ${x.id === it.bottleId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><input data-ri="${i}" data-k="cl" type="number" step="0.5" inputmode="decimal" value="${it.cl}" style="flex:1" aria-label="cl"><span class="small">cl</span><button class="btn sm ghost" data-a="rmItem" data-v="${i}" aria-label="Remove">✕</button></div><p class="small">${b ? chf(it.cl / b.sizeCl * b.price) : ''}</p>`; }).join('')}
+  <button class="btn sm" data-a="addItem" ${S.bottles.length ? '' : 'disabled'}>Add ingredient</button>
+  <label>Garnish, syrup, other (CHF per drink)<input data-r="extra" type="number" step="0.05" inputmode="decimal" value="${r.extra || 0}"></label>
+  <div class="card">
+    <div class="between"><span>Cost per drink</span><b>${chf(c)}</b></div>
+    <div class="between"><span>Profit per drink (before VAT 8.1%)</span><b class="green">${chf(r.price / 1.081 - c)}</b></div>
+    <div class="between"><span>Pour cost</span><span class="tag ${pc > t ? 'bad' : 'ok'}">${(pc * 100).toFixed(1)}%</span></div>
+    ${pc > t && r.price ? `<p class="small red">Above your ${S.target}% target. A price of CHF ${fair} would bring it under.</p>` : ''}
+  </div>
+  <button class="btn primary" data-a="saveRecipe">Save</button>
+  ${recipe(r.id) ? `<button class="btn ghost" data-a="delRecipe">Delete cocktail</button>` : ''}
+  <button class="btn ghost" data-a="closeSheet">Cancel</button>`);
+}
+
+function salesSheet() {
+  sheet(`<h2>Add sales</h2>
+  <p class="muted">Until the Lightspeed connection is live: type the number sold since the last count, or paste the item sales export from Lightspeed (name and quantity per line).</p>
+  <div class="list">${S.recipes.map((r) => `<div class="li" style="cursor:default"><span class="grow">${esc(r.name)}</span><input data-sale="${r.id}" type="number" inputmode="numeric" min="0" placeholder="0" style="width:96px" aria-label="${esc(r.name)} sold"></div>`).join('')}</div>
+  <label>Or paste the Lightspeed export<textarea id="paste" placeholder="Negroni;64&#10;Aperol Spritz;88"></textarea></label>
+  <button class="btn sm" data-a="csvFile">Choose a CSV file</button>
+  <button class="btn primary" data-a="saveSales">Save sales</button>
+  <button class="btn ghost" data-a="closeSheet">Cancel</button>`);
+}
+function parseSales(text) {
+  const lines = [], missed = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim(); if (!line) continue;
+    const parts = line.split(/[;,\t]/).map((s) => s.replace(/^"|"$/g, '').trim());
+    const qty = parts.map((p) => +p.replace(',', '.')).filter((n) => !isNaN(n) && n > 0).pop();
+    const name = parts.find((p) => isNaN(+p.replace(',', '.')));
+    if (!name || !qty) continue;
+    const r = S.recipes.find((x) => x.name.toLowerCase() === name.toLowerCase()) || S.recipes.find((x) => name.toLowerCase().includes(x.name.toLowerCase()));
+    if (r) lines.push({ recipeId: r.id, qty }); else missed.push(name);
+  }
+  return { lines, missed };
+}
+
+function deliverySheet(pre) {
+  ui.delLines = pre || ui.delLines || [{ bottleId: S.bottles[0] && S.bottles[0].id, qty: 1, price: '' }];
+  const L = ui.delLines;
+  sheet(`<h2>Add delivery</h2>
+  ${L.map((l, i) => `<div class="row"><select data-di="${i}" data-k="bottleId" style="flex:2">${S.bottles.map((x) => `<option value="${x.id}" ${x.id === l.bottleId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><input data-di="${i}" data-k="qty" type="number" inputmode="decimal" value="${l.qty}" style="flex:1" aria-label="Bottles"><button class="btn sm ghost" data-a="rmDel" data-v="${i}" aria-label="Remove">✕</button></div>${l.note ? `<p class="small blue">${esc(l.note)}</p>` : ''}`).join('')}
+  <button class="btn sm" data-a="addDel">Add line</button>
+  <button class="btn primary" data-a="saveDelivery">Save delivery</button>
+  <button class="btn ghost" data-a="closeSheet">Cancel</button>`);
+}
+
+/* ---------- actions ---------- */
+const A = {
+  go: (el, e) => { e.preventDefault(); go(el.dataset.v); },
+  closeSheet: (el, e) => { if (e.target.closest('[data-stop]') && el.classList.contains('sheet')) return; closeSheet(); },
+  startCount: () => { S.draft = { id: uid(), startedAt: Date.now(), levels: {} }; ui.area = null; ui.flags = {}; commit(); },
+  cancelCount: () => { S.draft = null; ui.area = null; commit(); },
+  area: (el) => { ui.area = el.dataset.v || null; ui.unknown = []; render(); window.scrollTo(0, 0); },
+  full: (el) => { const id = el.dataset.id, prev = counts().slice(-1)[0]; const cur = S.draft.levels[id] != null ? S.draft.levels[id] : lvl(prev, id); const full = Math.floor(cur + 1e-9), t = cur - full; S.draft.levels[id] = Math.max(0, r1(full + (+el.dataset.d) + t)); delete ui.flags[id]; commit(); },
+  finishCount: () => {
+    const prev = counts().slice(-1)[0]; const levels = {};
+    for (const b of S.bottles) levels[b.id] = S.draft.levels[b.id] != null ? S.draft.levels[b.id] : lvl(prev, b.id);
+    S.counts.push({ id: S.draft.id, date: Date.now(), levels }); S.draft = null; ui.area = null; ui.flags = {}; commit(); toast('Count saved'); go('reports');
+  },
+  dtab: (el) => { ui.drinksTab = el.dataset.v; render(); },
+  rtab: (el) => { ui.reportsTab = el.dataset.v; render(); },
+  mode: (el) => { ui.mode = el.dataset.v; render(); },
+  editBottle: (el) => bottleSheet(el.dataset.id),
+  delBottle: (el) => { const id = el.dataset.id; if (S.recipes.some((r) => r.items.some((i) => i.bottleId === id))) { toast('Used in a recipe. Remove it there first.'); return; } S.bottles = S.bottles.filter((b) => b.id !== id); closeSheet(); commit(); },
+  editRecipe: (el) => recipeSheet(el.dataset.id),
+  addItem: () => { ui.editR.items.push({ bottleId: S.bottles[0].id, cl: 4 }); drawRecipe(); },
+  rmItem: (el) => { ui.editR.items.splice(+el.dataset.v, 1); drawRecipe(); },
+  saveRecipe: () => { const r = ui.editR; if (!r.name.trim()) { toast('Give the cocktail a name'); return; } const i = S.recipes.findIndex((x) => x.id === r.id); if (i >= 0) S.recipes[i] = r; else S.recipes.push(r); closeSheet(); commit(); toast('Cocktail saved'); },
+  delRecipe: () => { S.recipes = S.recipes.filter((x) => x.id !== ui.editR.id); closeSheet(); commit(); },
+  sales: () => salesSheet(),
+  csvFile: () => { $('#csvfile').value = ''; $('#csvfile').click(); },
+  saveSales: () => {
+    const lines = []; document.querySelectorAll('[data-sale]').forEach((i) => { const q = +i.value; if (q > 0) lines.push({ recipeId: i.dataset.sale, qty: q }); });
+    const p = parseSales(($('#paste') || {}).value || ''); lines.push(...p.lines);
+    if (!lines.length) { toast(p.missed.length ? 'No names matched your cocktails' : 'Nothing entered'); return; }
+    S.sales.push({ id: uid(), date: Date.now(), source: p.lines.length ? 'Lightspeed export' : 'Entered by hand', lines }); closeSheet(); commit();
+    toast('Sales saved' + (p.missed.length ? '. Not matched: ' + p.missed.slice(0, 3).join(', ') : ''));
+  },
+  delivery: () => { ui.delLines = null; if (!S.bottles.length) { toast('Add bottles first'); return; } deliverySheet(); },
+  addDel: () => { ui.delLines.push({ bottleId: S.bottles[0].id, qty: 1 }); deliverySheet(ui.delLines); },
+  rmDel: (el) => { ui.delLines.splice(+el.dataset.v, 1); deliverySheet(ui.delLines); },
+  saveDelivery: () => { const lines = ui.delLines.filter((l) => l.bottleId && +l.qty > 0).map((l) => ({ bottleId: l.bottleId, qty: +l.qty })); if (!lines.length) return; for (const l of ui.delLines) if (l.price && bottle(l.bottleId)) bottle(l.bottleId).price = +l.price; S.deliveries.push({ id: uid(), date: Date.now(), note: 'Added in app', lines }); closeSheet(); commit(); toast('Delivery saved'); },
+  delEvent: (el) => { const id = el.dataset.id, t = el.dataset.type; if (t === 'sale') S.sales = S.sales.filter((x) => x.id !== id); if (t === 'del') S.deliveries = S.deliveries.filter((x) => x.id !== id); if (t === 'count') S.counts = S.counts.filter((x) => x.id !== id); commit(); },
+  copyOrder: async (el) => { const k = el.dataset.v; const txt = orderText(k); try { await navigator.clipboard.writeText(txt); toast('Order copied. Paste it into your email.'); } catch (e) { sheet(`<h2>Order text</h2><textarea readonly style="min-height:200px">${esc(txt)}</textarea><button class="btn" data-a="closeSheet">Close</button>`); } },
+  export: () => exportCsv(),
+  backup: () => { S.lastBackup = Date.now(); save(); download('pegel-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(S), 'application/json'); toast('Backup downloaded'); render(); },
+  restore: () => { $('#restorefile').value = ''; $('#restorefile').click(); },
+  reset: (el) => { const v = el.dataset.v; sheet(`<h2>${v === 'empty' ? 'Start empty?' : 'Load sample bar?'}</h2><p class="muted">This replaces everything in the app now.</p><button class="btn primary" data-a="doReset" data-v="${v}">Yes, replace</button><button class="btn ghost" data-a="closeSheet">Cancel</button>`); },
+  doReset: (el) => { S = el.dataset.v === 'empty' ? emptyState() : seed(); closeSheet(); commit(); go('home'); toast(el.dataset.v === 'empty' ? 'Empty. Add your bottles in Drinks › Bottles.' : 'Sample bar loaded'); }
+};
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-a]'); if (!el) return;
+  if (el.classList.contains('sheet') && e.target !== el) return;
+  const f = A[el.dataset.a]; if (f) f(el, e);
+});
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (el.dataset.f === 'tenths') { const id = el.dataset.id, prev = counts().slice(-1)[0]; const cur = S.draft.levels[id] != null ? S.draft.levels[id] : lvl(prev, id); S.draft.levels[id] = Math.floor(cur + 1e-9) + (+el.value) / 10; delete ui.flags[id]; const lab = el.closest('label').querySelector('b'); if (lab) lab.textContent = el.value + '/10'; S._t = Date.now(); save(); return; }
+  if (el.dataset.r) { ui.editR[el.dataset.r] = el.dataset.r === 'name' ? el.value : (+el.value || 0); return; }
+  if (el.dataset.ri) { const it = ui.editR.items[+el.dataset.ri]; it[el.dataset.k] = el.dataset.k === 'cl' ? (+el.value || 0) : el.value; return; }
+  if (el.dataset.di) { const l = ui.delLines[+el.dataset.di]; l[el.dataset.k] = el.dataset.k === 'qty' ? el.value : el.value; return; }
+});
+document.addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.dataset.f === 'tenths') { render(); return; }
+  if (el.dataset.r === 'price' || el.dataset.r === 'extra' || el.dataset.ri) { drawRecipe(); return; }
+  if (el.dataset.f === 'barName') { S.barName = el.value.trim() || 'My bar'; commit(); }
+  if (el.dataset.f === 'target') { S.target = Math.max(1, +el.value || 20); commit(); }
+  if (el.dataset.f === 'areas') { const a = el.value.split('\n').map((s) => s.trim()).filter(Boolean); if (a.length) { S.areas = a; for (const b of S.bottles) if (!a.includes(b.area)) b.area = a[0]; commit(); } }
+});
+$('#restorefile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (!f) return; try { const o = JSON.parse(await f.text()); if (!o || !Array.isArray(o.bottles) || !Array.isArray(o.counts)) throw new Error('bad'); S = o; commit(); go('home'); toast('Backup restored'); } catch (err) { toast('That file is not a Pegel backup.'); } });
+$('#csvfile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (!f) return; const t = await f.text(); const p = $('#paste'); if (p) p.value = t; toast('File loaded. Check and save.'); });
+
+function orderText(k) { return `Guten Tag\n\nBitte liefern Sie an ${S.barName}:\n\n` + (suggestions()[k] || []).map((x) => `${x.need} × ${x.b.name}`).join('\n') + `\n\nVielen Dank\n`; }
+function mailto(k) { return 'mailto:' + S.suppliers[k] + '?subject=' + encodeURIComponent('Bestellung ' + S.barName) + '&body=' + encodeURIComponent(orderText(k)); }
+function download(name, text, type) { const url = URL.createObjectURL(new Blob([text], { type })); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000); }
+async function exportCsv() {
+  const V = variance(), last = counts().slice(-1)[0];
+  const rows = [['Bottle', 'Area', 'Size cl', 'Price CHF', 'Par', 'Last count (bottles)', 'Stock now (bottles)', 'Used', 'Sold per recipes', 'Difference bottles', 'Difference CHF']];
+  for (const b of S.bottles) { const v = V && V.rows.find((x) => x.b.id === b.id); rows.push([b.name, b.area, b.sizeCl, b.price, b.par, last ? lvl(last, b.id) : '', stockNow(b.id) == null ? '' : r1(stockNow(b.id)), v ? r1(v.used) : '', v ? r1(v.exp) : '', v ? r1(v.diff) : '', v ? v.chf.toFixed(2) : '']); }
+  const csv = rows.map((r) => r.map((c) => /[;"\n]/.test(String(c)) ? '"' + String(c).replace(/"/g, '""') + '"' : c).join(';')).join('\n');
+  try { download('pegel-stock-' + new Date().toISOString().slice(0, 10) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8'); return; } catch (e) {}
+  try { await navigator.clipboard.writeText(csv); toast('CSV copied. Paste it into Excel.'); } catch (e) { sheet(`<h2>CSV</h2><textarea readonly style="min-height:240px">${esc(csv)}</textarea><button class="btn" data-a="closeSheet">Close</button>`); }
+}
+
+/* ---------- start ---------- */
+(function start() {
+  S = lsGet() || seed();
+  const h = location.hash.slice(1); if (VIEWS.includes(h)) ui.view = h;
+  render();
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
