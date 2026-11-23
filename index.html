@@ -64,7 +64,7 @@ input[type=range]{padding:0;border:0;accent-color:#F2A93B;min-height:32px;backgr
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#181818;border-top:1px solid #272727;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 8px calc(16px + env(safe-area-inset-bottom));z-index:5}
 nav.tabs a{display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;color:#A3A3A3;font-size:12px;line-height:16px;font-weight:500;padding:4px 0}
 nav.tabs a.on{color:#F2A93B}
-.toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);background:#272727;border:1px solid #313131;padding:8px 16px;border-radius:12px;font-size:14px;z-index:20;max-width:90vw}
+.toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);background:#272727;border:1px solid #F2A93B;padding:8px 16px;border-radius:12px;font-size:14px;z-index:50;max-width:90vw}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;z-index:30}
 .sheet>div{background:#181818;border:1px solid #313131;border-radius:24px 24px 0 0;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:24px 16px 40px;display:flex;flex-direction:column;gap:16px}
 .answer{white-space:pre-wrap;font-size:16px;line-height:24px}
@@ -81,7 +81,7 @@ nav.tabs a.on{color:#F2A93B}
 <input type="file" id="csvfile" accept=".csv,text/csv,text/plain" hidden>
 <script>
 'use strict';
-const APPV = '0.1.3';
+const APPV = '0.1.5';
 /* ---------- helpers ---------- */
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -381,26 +381,36 @@ function bottleSheet(id) {
 }
 
 function recipeSheet(id) {
+  ui.newFor = null;
   const r = id ? clone(recipe(id)) : { id: uid(), name: '', price: 0, items: [], extra: 0 };
   ui.editR = r;
   drawRecipe();
 }
+function costHtml(r) {
+  const c = recipeCost(r), pc = r.price ? c / r.price : 0, t = S.target / 100, fair = c ? Math.ceil(c / t) : 0;
+  return `<div class="between"><span>Cost per drink</span><b>${chf(c)}</b></div>
+    <div class="between"><span>Profit per drink (before VAT 8.1%)</span><b class="green">${chf(r.price / 1.081 - c)}</b></div>
+    <div class="between"><span>Pour cost</span><span class="tag ${pc > t ? 'bad' : 'ok'}">${(pc * 100).toFixed(1)}%</span></div>
+    ${pc > t && r.price ? `<p class="small red">Above your ${S.target}% target. A price of CHF ${fair} would bring it under.</p>` : ''}`;
+}
+function updateCost() {
+  const box = $('#costBox'); if (box) box.innerHTML = costHtml(ui.editR);
+  document.querySelectorAll('#layer [data-line]').forEach((p) => { const it = ui.editR.items[+p.dataset.line]; const b = it && bottle(it.bottleId); p.textContent = b ? chf(it.cl / b.sizeCl * b.price) : ''; });
+}
 function drawRecipe() {
-  const r = ui.editR, c = recipeCost(r), pc = r.price ? c / r.price : 0, t = S.target / 100;
-  const fair = c ? Math.ceil(c / t) : 0;
+  const r = ui.editR;
   sheet(`<h2>${r.name ? esc(r.name) : 'New cocktail'}</h2>
   <label>Name<input data-r="name" value="${esc(r.name)}"></label>
   <label>Menu price (CHF)<input data-r="price" type="number" step="0.5" inputmode="decimal" value="${r.price}"></label>
   <h3>Recipe</h3>
-  ${r.items.map((it, i) => { const b = bottle(it.bottleId); return `<div class="row"><select data-ri="${i}" data-k="bottleId" style="flex:2;${it.bottleId ? '' : 'border-color:#F2A93B'}">${it.bottleId ? '' : '<option value="" selected disabled>Choose a bottle…</option>'}${S.bottles.map((x) => `<option value="${x.id}" ${x.id === it.bottleId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><input data-ri="${i}" data-k="cl" type="number" step="0.5" inputmode="decimal" value="${it.cl}" style="flex:1" aria-label="cl"><span class="small">cl</span><button class="btn sm ghost" data-a="rmItem" data-v="${i}" aria-label="Remove">✕</button></div><p class="small">${b ? chf(it.cl / b.sizeCl * b.price) : ''}</p>`; }).join('')}
-  <button class="btn sm" data-a="addItem" ${S.bottles.length ? '' : 'disabled'}>Add ingredient</button>
+  ${r.items.map((it, i) => { const b = bottle(it.bottleId); return `<div class="row"><select data-ri="${i}" data-k="bottleId" style="flex:2;${it.bottleId ? '' : 'border-color:#F2A93B'}">${it.bottleId ? '' : '<option value="" selected disabled>Choose a bottle…</option>'}${S.bottles.map((x) => `<option value="${x.id}" ${x.id === it.bottleId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}<option value="__new">+ New bottle…</option></select><input data-ri="${i}" data-k="cl" type="number" step="0.5" inputmode="decimal" value="${it.cl}" style="flex:1" aria-label="cl"><span class="small">cl</span><button class="btn sm ghost" data-a="rmItem" data-v="${i}" aria-label="Remove">✕</button></div><p class="small" data-line="${i}">${b ? chf(it.cl / b.sizeCl * b.price) : ''}</p>`; }).join('')}
+  ${ui.newFor != null ? `<div class="card hi"><h3>New bottle</h3>
+    <label>Name<input id="nbName" placeholder="e.g. Campari"></label>
+    <div class="grid2"><label>Size (cl)<input id="nbSize" type="number" inputmode="decimal" value="70"></label><label>Price per bottle (CHF)<input id="nbPrice" type="number" step="0.05" inputmode="decimal" placeholder="0.00"></label></div>
+    <div class="grid2"><button class="btn primary" data-a="nbSave">Add bottle</button><button class="btn ghost" data-a="nbCancel">Cancel</button></div></div>` : ''}
+  <button class="btn" data-a="addItem">+ Add ingredient</button>
   <label>Garnish, syrup, other (CHF per drink)<input data-r="extra" type="number" step="0.05" inputmode="decimal" value="${r.extra || 0}"></label>
-  <div class="card">
-    <div class="between"><span>Cost per drink</span><b>${chf(c)}</b></div>
-    <div class="between"><span>Profit per drink (before VAT 8.1%)</span><b class="green">${chf(r.price / 1.081 - c)}</b></div>
-    <div class="between"><span>Pour cost</span><span class="tag ${pc > t ? 'bad' : 'ok'}">${(pc * 100).toFixed(1)}%</span></div>
-    ${pc > t && r.price ? `<p class="small red">Above your ${S.target}% target. A price of CHF ${fair} would bring it under.</p>` : ''}
-  </div>
+  <div class="card" id="costBox">${costHtml(r)}</div>
   <button class="btn primary" data-a="saveRecipe">Save</button>
   ${recipe(r.id) ? `<button class="btn ghost" data-a="delRecipe">Delete cocktail</button>` : ''}
   <button class="btn ghost" data-a="closeSheet">Cancel</button>`);
@@ -458,9 +468,15 @@ const A = {
   editBottle: (el) => bottleSheet(el.dataset.id),
   delBottle: (el) => { const id = el.dataset.id; if (S.recipes.some((r) => r.items.some((i) => i.bottleId === id))) { toast('Used in a recipe. Remove it there first.'); return; } S.bottles = S.bottles.filter((b) => b.id !== id); closeSheet(); commit(); },
   editRecipe: (el) => recipeSheet(el.dataset.id),
-  addItem: () => { ui.editR.items.push({ bottleId: '', cl: 3 }); drawRecipe(); const sel = document.querySelectorAll('#layer select[data-ri]'); const last = sel[sel.length - 1]; if (last) { last.scrollIntoView({ block: 'center', behavior: 'smooth' }); last.focus({ preventScroll: true }); } toast('Ingredient added. Pick the bottle and the cl.'); },
+  addItem: () => { ui.editR.items.push({ bottleId: '', cl: 3 }); if (!S.bottles.length) ui.newFor = ui.editR.items.length - 1; drawRecipe(); const sel = document.querySelectorAll('#layer select[data-ri]'); const last = sel[sel.length - 1]; if (last) { last.scrollIntoView({ block: 'center', behavior: 'smooth' }); last.focus({ preventScroll: true }); } toast('Ingredient added. Pick the bottle and the cl.'); },
+  nbSave: () => {
+    const name = ($('#nbName').value || '').trim(); if (!name) { toast('Give the bottle a name'); return; }
+    const b = { id: uid(), name, sizeCl: +$('#nbSize').value || 70, price: +$('#nbPrice').value || 0, par: 1, area: S.areas[0], supplier: '' };
+    S.bottles.push(b); const it = ui.editR.items[ui.newFor]; if (it) it.bottleId = b.id; ui.newFor = null; S._t = Date.now(); save(); render(); drawRecipe(); toast(name + ' added');
+  },
+  nbCancel: () => { const it = ui.editR.items[ui.newFor]; if (it && it.bottleId === '__new') it.bottleId = ''; ui.newFor = null; drawRecipe(); },
   rmItem: (el) => { ui.editR.items.splice(+el.dataset.v, 1); drawRecipe(); },
-  saveRecipe: () => { const r = ui.editR; r.items = r.items.filter((i) => i.bottleId && +i.cl > 0); if (!r.name.trim()) { toast('Give the cocktail a name'); return; } const i = S.recipes.findIndex((x) => x.id === r.id); if (i >= 0) S.recipes[i] = r; else S.recipes.push(r); closeSheet(); commit(); toast('Cocktail saved'); },
+  saveRecipe: () => { const r = ui.editR; r.items = r.items.filter((i) => i.bottleId && i.bottleId !== '__new' && +i.cl > 0); ui.newFor = null; if (!r.name.trim()) { toast('Give the cocktail a name'); return; } const i = S.recipes.findIndex((x) => x.id === r.id); if (i >= 0) S.recipes[i] = r; else S.recipes.push(r); closeSheet(); commit(); toast('Cocktail saved'); },
   delRecipe: () => { S.recipes = S.recipes.filter((x) => x.id !== ui.editR.id); closeSheet(); commit(); },
   sales: () => salesSheet(),
   csvFile: () => { $('#csvfile').value = ''; $('#csvfile').click(); },
@@ -491,14 +507,16 @@ document.addEventListener('click', (e) => {
 document.addEventListener('input', (e) => {
   const el = e.target;
   if (el.dataset.f === 'tenths') { const id = el.dataset.id, prev = counts().slice(-1)[0]; const cur = S.draft.levels[id] != null ? S.draft.levels[id] : lvl(prev, id); S.draft.levels[id] = Math.floor(cur + 1e-9) + (+el.value) / 10; delete ui.flags[id]; const lab = el.closest('label').querySelector('b'); if (lab) lab.textContent = el.value + '/10'; S._t = Date.now(); save(); return; }
-  if (el.dataset.r) { ui.editR[el.dataset.r] = el.dataset.r === 'name' ? el.value : (+el.value || 0); return; }
-  if (el.dataset.ri) { const it = ui.editR.items[+el.dataset.ri]; it[el.dataset.k] = el.dataset.k === 'cl' ? (+el.value || 0) : el.value; return; }
+  if (el.dataset.r) { ui.editR[el.dataset.r] = el.dataset.r === 'name' ? el.value : (+el.value || 0); updateCost(); return; }
+  if (el.dataset.ri) { const it = ui.editR.items[+el.dataset.ri]; it[el.dataset.k] = el.dataset.k === 'cl' ? (+el.value || 0) : el.value; if (el.dataset.k === 'cl') updateCost(); return; }
   if (el.dataset.di) { const l = ui.delLines[+el.dataset.di]; l[el.dataset.k] = el.dataset.k === 'qty' ? el.value : el.value; return; }
 });
 document.addEventListener('change', (e) => {
   const el = e.target;
   if (el.dataset.f === 'tenths') { render(); return; }
-  if (el.dataset.r === 'price' || el.dataset.r === 'extra' || el.dataset.ri) { drawRecipe(); return; }
+  if (el.dataset.ri && el.dataset.k === 'bottleId' && el.value === '__new') { ui.newFor = +el.dataset.ri; drawRecipe(); const n = $('#nbName'); if (n) { n.scrollIntoView({ block: 'center' }); n.focus(); } return; }
+  if (el.dataset.ri && el.dataset.k === 'bottleId') { drawRecipe(); return; }
+  if (el.dataset.r || el.dataset.ri) return;
   if (el.dataset.f === 'barName') { S.barName = el.value.trim() || 'My bar'; commit(); }
   if (el.dataset.f === 'target') { S.target = Math.max(1, +el.value || 20); commit(); }
   if (el.dataset.f === 'areas') { const a = el.value.split('\n').map((s) => s.trim()).filter(Boolean); if (a.length) { S.areas = a; for (const b of S.bottles) if (!a.includes(b.area)) b.area = a[0]; commit(); } }
