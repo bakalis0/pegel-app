@@ -81,7 +81,7 @@ nav.tabs a.on{color:#F2A93B}
 <input type="file" id="csvfile" accept=".csv,text/csv,text/plain" hidden>
 <script>
 'use strict';
-const APPV = '0.1.2';
+const APPV = '0.1.3';
 /* ---------- helpers ---------- */
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -359,7 +359,7 @@ function sheet(html) {
   const box = $('#layer .sheet > div'), reopen = !!box, top = box ? box.scrollTop : 0;
   $('#layer').innerHTML = `<div class="sheet" data-a="closeSheet"><div role="dialog" aria-modal="true" data-stop>${html}</div></div>`;
   if (reopen) { $('#layer .sheet > div').scrollTop = top; return; }
-  const f = $('#layer input, #layer select, #layer textarea, #layer button'); if (f) f.focus({ preventScroll: true });
+  if (window.matchMedia && matchMedia('(pointer: coarse)').matches) return; const f = $('#layer input, #layer select, #layer textarea, #layer button'); if (f) f.focus({ preventScroll: true });
 }
 function closeSheet() { $('#layer').innerHTML = ''; }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#layer').innerHTML) closeSheet(); });
@@ -392,7 +392,7 @@ function drawRecipe() {
   <label>Name<input data-r="name" value="${esc(r.name)}"></label>
   <label>Menu price (CHF)<input data-r="price" type="number" step="0.5" inputmode="decimal" value="${r.price}"></label>
   <h3>Recipe</h3>
-  ${r.items.map((it, i) => { const b = bottle(it.bottleId); return `<div class="row"><select data-ri="${i}" data-k="bottleId" style="flex:2">${S.bottles.map((x) => `<option value="${x.id}" ${x.id === it.bottleId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><input data-ri="${i}" data-k="cl" type="number" step="0.5" inputmode="decimal" value="${it.cl}" style="flex:1" aria-label="cl"><span class="small">cl</span><button class="btn sm ghost" data-a="rmItem" data-v="${i}" aria-label="Remove">✕</button></div><p class="small">${b ? chf(it.cl / b.sizeCl * b.price) : ''}</p>`; }).join('')}
+  ${r.items.map((it, i) => { const b = bottle(it.bottleId); return `<div class="row"><select data-ri="${i}" data-k="bottleId" style="flex:2;${it.bottleId ? '' : 'border-color:#F2A93B'}">${it.bottleId ? '' : '<option value="" selected disabled>Choose a bottle…</option>'}${S.bottles.map((x) => `<option value="${x.id}" ${x.id === it.bottleId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><input data-ri="${i}" data-k="cl" type="number" step="0.5" inputmode="decimal" value="${it.cl}" style="flex:1" aria-label="cl"><span class="small">cl</span><button class="btn sm ghost" data-a="rmItem" data-v="${i}" aria-label="Remove">✕</button></div><p class="small">${b ? chf(it.cl / b.sizeCl * b.price) : ''}</p>`; }).join('')}
   <button class="btn sm" data-a="addItem" ${S.bottles.length ? '' : 'disabled'}>Add ingredient</button>
   <label>Garnish, syrup, other (CHF per drink)<input data-r="extra" type="number" step="0.05" inputmode="decimal" value="${r.extra || 0}"></label>
   <div class="card">
@@ -458,9 +458,9 @@ const A = {
   editBottle: (el) => bottleSheet(el.dataset.id),
   delBottle: (el) => { const id = el.dataset.id; if (S.recipes.some((r) => r.items.some((i) => i.bottleId === id))) { toast('Used in a recipe. Remove it there first.'); return; } S.bottles = S.bottles.filter((b) => b.id !== id); closeSheet(); commit(); },
   editRecipe: (el) => recipeSheet(el.dataset.id),
-  addItem: () => { ui.editR.items.push({ bottleId: S.bottles[0].id, cl: 4 }); drawRecipe(); const sel = document.querySelectorAll('#layer select[data-ri]'); const last = sel[sel.length - 1]; if (last) { last.scrollIntoView({ block: 'center', behavior: 'smooth' }); last.focus({ preventScroll: true }); } toast('Ingredient added. Pick the bottle and the cl.'); },
+  addItem: () => { ui.editR.items.push({ bottleId: '', cl: 3 }); drawRecipe(); const sel = document.querySelectorAll('#layer select[data-ri]'); const last = sel[sel.length - 1]; if (last) { last.scrollIntoView({ block: 'center', behavior: 'smooth' }); last.focus({ preventScroll: true }); } toast('Ingredient added. Pick the bottle and the cl.'); },
   rmItem: (el) => { ui.editR.items.splice(+el.dataset.v, 1); drawRecipe(); },
-  saveRecipe: () => { const r = ui.editR; if (!r.name.trim()) { toast('Give the cocktail a name'); return; } const i = S.recipes.findIndex((x) => x.id === r.id); if (i >= 0) S.recipes[i] = r; else S.recipes.push(r); closeSheet(); commit(); toast('Cocktail saved'); },
+  saveRecipe: () => { const r = ui.editR; r.items = r.items.filter((i) => i.bottleId && +i.cl > 0); if (!r.name.trim()) { toast('Give the cocktail a name'); return; } const i = S.recipes.findIndex((x) => x.id === r.id); if (i >= 0) S.recipes[i] = r; else S.recipes.push(r); closeSheet(); commit(); toast('Cocktail saved'); },
   delRecipe: () => { S.recipes = S.recipes.filter((x) => x.id !== ui.editR.id); closeSheet(); commit(); },
   sales: () => salesSheet(),
   csvFile: () => { $('#csvfile').value = ''; $('#csvfile').click(); },
